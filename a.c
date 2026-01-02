@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-
 #ifdef _WIN32
 #include <windows.h>
 void delay(int ms){ Sleep(ms); }
@@ -17,7 +16,7 @@ typedef struct {
     int marks;
     int fullMarks;
     char grade[3];
-    int isOptional; // 1 if optional subject (doesn't count in GPA)
+    int isOptional;
 } Subject;
 
 typedef struct {
@@ -30,28 +29,25 @@ typedef struct {
     int fetchSuccess;
 } FetchData;
 
-// Determine full marks based on subject code
 int getFullMarks(int code) {
-    if (code == 101 || code == 107) return 200; // Bangla, English
-    if (code == 147 || code == 156) return 50;  // Physical Ed, Career Ed
-    return 100; // All others
+    if (code == 101 || code == 107) return 200;
+    if (code == 147 || code == 156) return 50;
+    return 100;
 }
 
-// Check if subject is optional (doesn't count in GPA calculation)
 int isOptionalSubject(int code) {
-    // Physical Education (147) and Career Education (156) are optional
     if (code == 147 || code == 156) return 0;
     return 0;
 }
 
 double gradePoint(int marks, int full, int code) {
-    if (code == 147 || code == 156) { // Physical Ed, Career Ed
-        if (marks >= 40) return 5.0; // 80%
-        if (marks >= 35) return 4.0; // 70%
-        if (marks >= 30) return 3.5; // 60%
-        if (marks >= 25) return 3.0; // 50%
-        if (marks >= 20) return 2.0; // 40%
-        if (marks >= 17) return 1.0; // 33% of 50 is 16.5
+    if (code == 147 || code == 156) {
+        if (marks >= 40) return 5.0;
+        if (marks >= 35) return 4.0;
+        if (marks >= 30) return 3.5;
+        if (marks >= 25) return 3.0;
+        if (marks >= 20) return 2.0;
+        if (marks >= 17) return 1.0;
         return 0.0;
     }
     double percent = (marks * 100.0) / full;
@@ -66,7 +62,7 @@ double gradePoint(int marks, int full, int code) {
 
 void printSubjects(Subject subjects[], int n) {
     printf("Code   Subject                                   Marks   Grade   Percent\n");
-    printf("-----------------------------------------------------------------------------\n"); // 77 dashes
+    printf("-----------------------------------------------------------------------------\n");
     for(int i = 0; i < n; i++) {
         double percent = (subjects[i].marks * 100.0) / subjects[i].fullMarks;
         printf("%-6d %-45s %-7d %-7s %-7.2f%%\n",
@@ -76,7 +72,7 @@ void printSubjects(Subject subjects[], int n) {
                subjects[i].grade,
                percent);
     }
-    printf("-----------------------------------------------------------------------------\n"); // 77 dashes
+    printf("-----------------------------------------------------------------------------\n");
 }
 
 void typeText(const char text[], int speed) {
@@ -94,7 +90,6 @@ void printSignature() {
     typeText("Adamjee Cantonment College\n", 30);
 }
 
-// Extract text between markers
 char* extractBetween(const char *str, const char *start, const char *end) {
     char *p1 = strstr(str, start);
     if (!p1) return NULL;
@@ -108,7 +103,6 @@ char* extractBetween(const char *str, const char *start, const char *end) {
     strncpy(result, p1, len);
     result[len] = '\0';
     
-    // Trim whitespace
     while(*result == ' ' || *result == '\n' || *result == '\r' || *result == '\t') {
         memmove(result, result + 1, strlen(result));
     }
@@ -123,7 +117,6 @@ char* extractBetween(const char *str, const char *start, const char *end) {
 void* fetchResultThread(void *arg) {
     FetchData *data = (FetchData*)arg;
     
-    // Save to temporary file
     char cmd[1024];
     snprintf(cmd, sizeof(cmd),
         "curl -s 'https://result19.comillaboard.gov.bd/2025/individual/result_marks_details.php' "
@@ -138,7 +131,6 @@ void* fetchResultThread(void *arg) {
         return NULL;
     }
     
-    // Read the file
     FILE *fp = fopen("/tmp/ssc_result.html", "r");
     if (!fp) {
         data->fetchSuccess = 0;
@@ -155,7 +147,6 @@ void* fetchResultThread(void *arg) {
     fclose(fp);
     html[fsize] = '\0';
 
-    // Parse GPA from HTML
     char *gpa_marker = "<td>GPA</td>";
     char *gpa_ptr = strstr(html, gpa_marker);
     if (gpa_ptr) {
@@ -168,25 +159,21 @@ void* fetchResultThread(void *arg) {
         }
     }
     
-    // Count and parse subjects
     int maxSubjects = 20;
     data->subjects = malloc(sizeof(Subject) * maxSubjects);
     data->subjectCount = 0;
     
     char *ptr = html;
     while (data->subjectCount < maxSubjects) {
-        // Find next subject code
         ptr = strstr(ptr, "<td class=\"bg_grey\">");
         if (!ptr) break;
         ptr += strlen("<td class=\"bg_grey\">");
         
-        // Extract code
         int code;
         if (sscanf(ptr, "%d", &code) != 1) break;
         data->subjects[data->subjectCount].code = code;
         data->subjects[data->subjectCount].isOptional = isOptionalSubject(code);
         
-        // Find subject name
         ptr = strstr(ptr, "<td class=\"bg_grey cap_lt\">");
         if (!ptr) break;
         ptr += strlen("<td class=\"bg_grey cap_lt\">");
@@ -199,7 +186,6 @@ void* fetchResultThread(void *arg) {
         strncpy(data->subjects[data->subjectCount].name, ptr, nameLen);
         data->subjects[data->subjectCount].name[nameLen] = '\0';
         
-        // Trim name
         char *name = data->subjects[data->subjectCount].name;
         while(*name == ' ' || *name == '\n') name++;
         memmove(data->subjects[data->subjectCount].name, name, strlen(name) + 1);
@@ -208,7 +194,6 @@ void* fetchResultThread(void *arg) {
             data->subjects[data->subjectCount].name[--len] = '\0';
         }
         
-        // Find marks and grade
         ptr = strstr(ptr, "<td class=\"bg_grey cap_lt\">");
         if (!ptr) break;
         ptr += strlen("<td class=\"bg_grey cap_lt\">");
@@ -260,14 +245,11 @@ void installCurl() {
 int main(int argc, char *argv[]) {
     char roll[20] = "152205";
     char reg[20] = "2211210980";
-    
-    // Check if curl is installed
     if (!checkCurlInstalled()) {
         installCurl();
         return 1;
     }
     
-    // Allow command line arguments
     if (argc >= 2) {
         strncpy(roll, argv[1], 19);
         roll[19] = '\0';
@@ -277,7 +259,6 @@ int main(int argc, char *argv[]) {
         reg[19] = '\0';
     }
     
-    // Initialize fetch data
     FetchData fetchData;
     strcpy(fetchData.roll, roll);
     strcpy(fetchData.reg, reg);
@@ -287,17 +268,14 @@ int main(int argc, char *argv[]) {
     fetchData.fetchComplete = 0;
     fetchData.fetchSuccess = 0;
     
-    // Start fetching in background thread
     pthread_t fetchThread;
     pthread_create(&fetchThread, NULL, fetchResultThread, &fetchData);
     
-    // Print header with typing animation
     printf("=============================================\n");
     typeText("Student Name : AS Ayman\n", 30);
     typeText("SSC Examination Result\n", 30);
     printf("=============================================\n\n");
     
-    // If fetch is not complete yet, show loading animation
     if (!fetchData.fetchComplete) {
         printf("Waiting to fetch the result");
         fflush(stdout);
@@ -311,28 +289,25 @@ int main(int argc, char *argv[]) {
             spinnerIdx = (spinnerIdx + 1) % 4;
             delay(150);
         }
-        printf("\b\b\b\b    \b\b\b\b"); // Clear the spinner
+        printf("\b\b\b\b    \b\b\b\b");
         printf("\n\n");
     }
     
     pthread_join(fetchThread, NULL);
     
-    // Check if fetch was successful
     if (!fetchData.fetchSuccess || fetchData.subjectCount == 0) {
         printf("Failed to fetch result!\n");
         printf("Please check your roll number and registration number.\n");
         return 1;
     }
     
-    // Calculate totals
     int totalMarks = 0, totalFull = 0;
     
     for(int i = 0; i < fetchData.subjectCount; i++) {
         totalMarks += fetchData.subjects[i].marks;
         totalFull += fetchData.subjects[i].fullMarks;
     }
-    
-    // Print results (no typing animation)
+
     printSubjects(fetchData.subjects, fetchData.subjectCount);
     printf("Total Marks : %d / %d (%.2f%%)\n", totalMarks, totalFull, (totalMarks * 100.0) / totalFull);
     printf("Total GPA   : %.2f\n", fetchData.gpa);
