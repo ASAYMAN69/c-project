@@ -65,16 +65,18 @@ double gradePoint(int marks, int full, int code) {
 }
 
 void printSubjects(Subject subjects[], int n) {
-    printf("Code   Subject                                   Marks   Grade\n");
-    printf("---------------------------------------------------------------\n");
+    printf("Code   Subject                                   Marks   Grade   Percent\n");
+    printf("-----------------------------------------------------------------------------\n"); // 77 dashes
     for(int i = 0; i < n; i++) {
-        printf("%-6d %-45s %-7d %-5s\n",
+        double percent = (subjects[i].marks * 100.0) / subjects[i].fullMarks;
+        printf("%-6d %-45s %-7d %-7s %-7.2f%%\n",
                subjects[i].code,
                subjects[i].name,
                subjects[i].marks,
-               subjects[i].grade);
+               subjects[i].grade,
+               percent);
     }
-    printf("---------------------------------------------------------------\n");
+    printf("-----------------------------------------------------------------------------\n"); // 77 dashes
 }
 
 void typeText(const char text[], int speed) {
@@ -332,7 +334,7 @@ int main(int argc, char *argv[]) {
     
     // Print results (no typing animation)
     printSubjects(fetchData.subjects, fetchData.subjectCount);
-    printf("Total Marks : %d / %d\n", totalMarks, totalFull);
+    printf("Total Marks : %d / %d (%.2f%%)\n", totalMarks, totalFull, (totalMarks * 100.0) / totalFull);
     printf("Total GPA   : %.2f\n", fetchData.gpa);
     printf("=============================================\n\n");
     
