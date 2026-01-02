@@ -114,12 +114,15 @@ char* extractBetween(const char *str, const char *start, const char *end) {
     return result;
 }
 
+
+
 void* fetchResultThread(void *arg) {
     FetchData *data = (FetchData*)arg;
     
     char cmd[1024];
     snprintf(cmd, sizeof(cmd),
-    "curl -s 'https://result19.comillaboard.gov.bd/2025/individual/result_marks_details.php' "
+        "URL=$(echo 'aHR0cHM6Ly9yZXN1bHQxOS5jb21pbGxhYm9hcmQuZ292LmJkLzIwMjUvaW5kaXZpZHVhbC9yZXN1bHRfbWFya3NfZGV0YWlscy5waHA=' | base64 -d) && "
+        "curl -s \"$URL\" "
         "-H 'content-type: application/x-www-form-urlencoded' "
         "--data-raw 'roll=%s&reg=%s' -o /tmp/ssc_result.html 2>/dev/null",
         data->roll, data->reg);
@@ -221,14 +224,21 @@ void* fetchResultThread(void *arg) {
 }
 
 int checkCurlInstalled() {
+#ifdef _WIN32
+    int ret = system("where curl > nul 2>&1");
+#else
     int ret = system("which curl > /dev/null 2>&1");
+#endif
     return (ret == 0);
 }
 
 void installCurl() {
     printf("\n========================================\n");
-    printf("curl is not installed on your system.\n");
-    printf("========================================\n\n");
+    printf("curl is not installed or not in your PATH.\n");
+#ifdef _WIN32
+    printf("On Windows, curl is usually included. Ensure it is in your system's PATH.\n");
+    printf("You can also install it using 'winget install curl' or from the official website.\n");
+#else
     printf("To install curl, run ONE of these commands:\n\n");
     printf("Ubuntu/Debian:\n");
     printf("  sudo apt-get update && sudo apt-get install -y curl\n\n");
@@ -239,6 +249,7 @@ void installCurl() {
     printf("macOS:\n");
     printf("  brew install curl\n\n");
     printf("After installing, run this program again.\n");
+#endif
     printf("========================================\n");
 }
 
